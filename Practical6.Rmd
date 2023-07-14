@@ -3,9 +3,9 @@ title: "Constrained ordination: including explanatory variables"
 subtitle: "BIO2020 Statistics and experimental design for biologists"
 author: "Roy Sanderson"
 output:
+  html_document: default
   word_document:
      reference_docx: template.docx
-  html_document: default
   pdf_document: default
 ---
 
