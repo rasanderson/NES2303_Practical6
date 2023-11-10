@@ -1,6 +1,6 @@
 ---
 title: "Constrained ordination: including explanatory variables"
-subtitle: "BIO2020 Statistics and experimental design for biologists"
+subtitle: "NES2303 Statistics and experimental design for biologists"
 author: "Roy Sanderson"
 output:
   html_document: default
@@ -10,10 +10,10 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-library(bio2020)
+library(vegan)
 data("varespec")
 data("varechem")
-varespec_cca <- ordi_cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
+varespec_cca <- cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -85,7 +85,7 @@ This is a vegetation ecology example. However, I have published papers using thi
 Begin by loading the two datasets, and explore their contents, for example
 
 ```{r, eval=FALSE}
-library(bio2020) # auto-loads the vegan library
+library(vegan) # Activate the vegan library
 
 # Access the example datasets
 data("varespec")
@@ -107,7 +107,7 @@ phosphorus (`P`), Aluminium (`Al`), soil pH (`pH`), and the amount of bare groun
 (`Baresoil`) as explanatories:
 
 ```{r varespec_cca, eval=FALSE}
-varespec_cca <- ordi_cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
+varespec_cca <- cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
 summary(varespec_cca)
 ```
 
@@ -125,21 +125,42 @@ a different point for each of your category levels
 * You can of course have a mixture of continuous and categorical variables
 
 ```{r varespec_triplot}
-ordi_plot(varespec_cca, geom="text")
+plot(varespec_cca)
 ```
 
-Unless there are relatively few samples or attributes, the plot will not label
-the points unless you add the `geom="text"` option. This gives a rather cluttered plot, so you will probably find it easier to store the plot results in a new R object called `varespec_cca_plt` and then use `ordi_identify()` from the `bio2020` package to interactively identify points with your mouse:
+This gives a rather cluttered graph, so you will probably find it easier to plot
+the samples and species (plus the environmental constraints) on separate plots:
+
+```{r, eval=TRUE}
+# Sites and environment
+# plot the empty ordination space and label the axes with percentage explained
+plot(varespec_cca, type = "n", xlab = "CCA1 (17.7%)", ylab = "CCA2 (9.3%)",
+     main = "Sites and environment")
+
+# add the site scores
+text(varespec_cca, display = "sites", col = "black")
+
+# Add the explanatory variable names, also called biplot (bp) scores
+text(varespec_cca, scaling = 0, display = "bp", head.arrow = 0.1,
+     lwd = 2, col= "blue")
+```
+
+Addding the various components of the plots separately gives you a lot of 
+control, e.g. over font size, labelling, arrow size etc. Repeat the process for
+the species and biplot scores:
 
 ```{r, eval=FALSE}
-# Store plot in an R object
-varespec_cca_plt <- ordi_plot(varespec_cca, geom="point")
+# Species and environment
+# plot the empty ordination space and label the axes with percentage explained
+plot(varespec_cca, type = "n", xlab = "CCA1 (17.7%)", ylab = "CCA2 (9.3%)",
+     main = "Species and environment")
 
-# Display the plot on screen
-varespec_cca_plt
+# add the site scores
+text(varespec_cca, display = "species", col = "red")
 
-# Interactively label some points
-ordi_identify(varespec_cca_plt)
+# label the the arrows with the variable names
+text(varespec_cca, scaling = 0, display = "bp", head.arrow = 0.1,
+     lwd = 2, col= "blue")
 ```
 
 
@@ -157,25 +178,21 @@ arrows at roughly 90 degrees to each other.
 You can see that Aluminium (`Al`), Phosphorus (`P`) and bare soil (`Baresoil`) are the most important variables, as these have the longest arrows. Al and pH are positively correlated with other (arrows point in same direction), and K and P are positively correlated (roughly) as arrows point in the same direction. pH and Baresoil are negatively correlated (arrows point in opposite directions). pH and P are uncorrelated with each other (arrows roughly 90-degrees).
 
 ## 1.3 Simplifying the plot to view samples or species
-There is still a lot of information in the plots so you can simplify them if you wish by only showing the arrows and the rows (samples) and columns (species). Run this code, or if you prefer, store in a graph object and use `ordi_identify()` to only label selected points:
+There is still a lot of information in the plots so you can simplify them to only
+label some species or samples. Our problem is that our species plot in particular
+is very cluttered as the **ubiquituous species** that occur in lots of samples
+overlap in the middle.
+
+We can avoid this problem by storing the plot in a separate R object and then
+calling the `identify()` function. **Note**: when you use `identify()` the 
+species names are not added until you have hit the "Esc" key (top left of your
+keyboard).
 
 ```{r, eval=FALSE}
-ordi_plot(varespec_cca, geom="text", layers=c("sites", "biplot"))
-ordi_plot(varespec_cca, geom="text", layers=c("species", "biplot"))
-```
-
-These plots, especially the species one, are quite cluttered as the **ubiquituous species** that occur in lots of samples overlap in the middle. You can if you wish only label selected points using `ordi_identify()`:
-
-```{r, eval=FALSE}
-# Sites; save in R object and label points with mouse
-varespec_cca_site_plt <- ordi_plot(varespec_cca, geom="point", layers=c("sites", "biplot"))
-varespec_cca_site_plt
-ordi_identify(varespec_cca_site_plt)
-
 # Species; save in R object and label points with mouse
-varespec_cca_spp_plt  <- ordi_plot(varespec_cca, geom="point", layers=c("species", "biplot"))
-varespec_cca_spp_plt
-ordi_identify(varespec_cca_spp_plt)
+varespec_cca_spp_plt  <- plot(varespec_cca, type="points", display=c("species", "bp"))
+identify(varespec_cca_spp_plt, "species") # Hit Esc to exit
+# Call the identify function again if you want to label more species
 ```
 
 From these plots we can start to interpret the relationships between our explanatory variables and individual samples or species:
@@ -191,11 +208,11 @@ The longest arrow (and hence most important explanatory variable) is bare soil. 
 
 ```{r, eval=FALSE}
 # Partial CCA, storing the results in a new R object
-varespec_cca2 <- ordi_cca(varespec ~ K + P + Al + pH + Condition(Baresoil), data=varechem)
+varespec_cca2 <- occa(varespec ~ K + P + Al + pH + Condition(Baresoil), data=varechem)
 
 # If you find these plots too cluttered, use ordi_identify
-ordi_plot(varespec_cca2, geom="text", layers=c("sites", "biplot"))
-ordi_plot(varespec_cca2, geom="text", layers=c("species", "biplot"))
+plot(varespec_cca2, display=c("sites", "bp"))
+plot(varespec_cca2, display=c("species", "bp"))
 ```
 
 The relationships between the remaining soil chemistry variables are now clearer. Partial ordination using a "conditioning" variable is a useful way of seeing what is going on in your data **after** having removed an important, but less scientifically interesting, variable to the question you are trying to address.
@@ -203,7 +220,7 @@ The relationships between the remaining soil chemistry variables are now clearer
 Another advantage of constrained ordination, irrespective of whether you have "partialled-out" a variable using `Condition` or have the original CCA, is that it is easier to interpret the biological meaning of the x- and y-axes for CCA1 and CCA2. So, for example, in the plot for `varespec_cca2` you can see that the aluminium content of the soil increases from left to right in the plot, as the arrow representing aluminium is almost parallel with CCA1, and points to the right. Potassium (`K`) tends to increase with CCA2, although as the arrow is at about 45 degrees it is not quite as clear-cut.
 
 ## 1.5 Using categorical explanatory variables
-Constrained ordination methods work just as effectively with explanatory variables that are categorical as well as those that are continuous, and you express the model in response and explanatory variables in exactly the same way. It can even handle 'ordinal' explanatory variables (ranked "first", "second", "third" etc.). Have a look at the example using the `dune` and `dune.env` datasets (both come with `vegan`) that you can [access at the BIO8075 website](https://naturalandenvironmentalscience.shinyapps.io/Constrained/#section-constrained-ordination-with-categorical-explanatory-variables). When you have time, try out these examples in RStudio. The main difference with categorical explanatory variables is that they are displayed as **points** (centroids) rather than arrows, but their interpretation is the same.
+Constrained ordination methods work just as effectively with explanatory variables that are categorical as well as those that are continuous, and you express the model in response and explanatory variables in exactly the same way. It can even handle 'ordinal' explanatory variables (ranked "first", "second", "third" etc.). Have a look at the example using the `dune` and `dune.env` datasets (both come with `vegan`) that you can [access at the NES8010 website](https://naturalandenvironmentalscience.shinyapps.io/Constrained/#section-constrained-ordination-with-categorical-explanatory-variables). When you have time, try out these examples in RStudio. The main difference with categorical explanatory variables is that they are displayed as **points** (centroids) rather than arrows, but their interpretation is the same.
 
 # 2. Permutation ANOVA tests
 ## 2.1 What is permutation ANOVA?
@@ -226,7 +243,7 @@ $$\textit{p-value}=\frac{8+1}{999+1}=\frac{9}{1000}=0.009$$
 
 which is a low probability and therefore you would reject the null hypothesis of no effect of your explanatory variable on your response. Quite obviously, the order of your rows in your response relative to your explanatory matters, because the latter is having a big effect.
 
-One oddity of the permutation approach is that you will obtain slightly different p-values every time you run the analysis. This is nothing to worry about, as long as you have sufficient permutations. R will default to the best number of permutations, or else it will select 999, so that you have a p-value to 3 significant figures.
+One oddity of the permutation approach is that you will obtain slightly different p-values every time you run the analysis, due to the random nature of the calculations. This is nothing to worry about, as long as you have sufficient permutations. R will default to the best number of permutations, or else it will select 999, so that you have a p-value to 3 significant figures.
 
 ## 2.2 Overall effect of explanatory variables
 The simplest test is a permutation ANOVA of the overall effects of your explanatory variables on your response. Your results will not be exactly the same as mine due to the randomisation process. The results are still presented in the form of an ANOVA table, but some authors refer to the F-ratio as a "pseudo F-ratio" as it has been calculated through randomisation rather than the conventional least-squares approach.
@@ -270,8 +287,8 @@ In the code below, the  `varespec ~ .` syntax indicates that you begin by having
 ```{r, results=FALSE}
 # Create full ordination with all the explanatory variables, using the ~ .
 # syntax to save you having to type the names of all 14 variables separately
-varespec_bigcca <- ordi_cca(varespec ~ . , data=varechem)
-varespec_mincca <- ordi_step(varespec_bigcca)
+varespec_bigcca <- cca(varespec ~ . , data=varechem)
+varespec_mincca <- ordistep(varespec_bigcca)
 ```
 
 Finally, we can check the results of our minimal CCA analysis:
@@ -281,4 +298,4 @@ anova(varespec_mincca, by="margin")
 ```
 
 # Summary
-Constrained ordination, available via either `ordi_rda()` or `ordi_cca()` provides a powerful tool to understand the relationships between your multiple response variables and explanatories. Whilst the process of statistical analysis is slightly different, interpretation of results on graphs and from tables is relatively straightforward.
+Constrained ordination, available via either `rda()` for linear analysis or `cca()` for unimodal analysis provides a powerful tool to understand the relationships between your multiple response variables and explanatories. Whilst the process of statistical analysis is slightly different, interpretation of results on graphs and from tables is relatively straightforward.
