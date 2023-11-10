@@ -8,7 +8,8 @@ runtime: shiny_prerendered
 library(learnr)
 library(mosaic)
 library(vegan)
-library(bio2020)
+library(ggrepel)
+library(broom)
 data(dune)
 data(dune.env)
 data(varespec)
@@ -35,11 +36,10 @@ and showed a clear pattern with Moisture:
 
 ```{r dune_pca, echo=TRUE}
 # PCA of dune data
-dune_pca <- ordi_pca(dune)
+dune_pca <- rda(dune)
 
 # Plot of PC1 vs PC2
-ordi_plot(dune_pca, layers="sites", geom="text",
-         title = "PCA of dune vegetation; site codes.")
+plot(dune_pca, display="sites", main = "PCA of dune vegetation; site codes.")
 
 # Extract PC1 and relate to soil moisture category
 dune_pc1 <- scores(dune_pca, display="sites", choices = 1)
@@ -49,13 +49,12 @@ gf_boxplot(dune_pc1 ~ Moisture, data=dune.env)
 Now let's do a linear model to formally test the relationship between soil
 moisture and dune vegetation composition as described by PC1. We'll display
 the ANOVA table, and check the first two model diagnostic plots (residuals and
-QQ plots) via the `mplot()` function:
+QQ plots):
 
 ```{r dune_pca_lm, echo=TRUE}
 dune_lm <- lm(dune_pc1 ~ Moisture, data=dune.env)
 anova(dune_lm)
-mplot(dune_lm, which=1:2)
-
+plot(dune_lm, which=1:2)
 ```
 
 The relationship with moisture class is highly significant, with F=14.94426 and
@@ -88,58 +87,11 @@ problem arises from what happens when you undertake an unconstrained ordination.
 Let's repeat our PCA of the sand dune vegetation, but omit one of the samples
 at random (sample 6):
 
-```{r compare_pca}
-# Multiple plot function from http://www.cookbook-r.com/Graphs/Multiple_graphs_on_one_page_(ggplot2)/ 
-#
-# ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
-# - cols:   Number of columns in layout
-# - layout: A matrix specifying the layout. If present, 'cols' is ignored.
-#
-# If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
-# then plot 1 will go in the upper left, 2 will go in the upper right, and
-# 3 will go all the way across the bottom.
-#
-multi_plot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
-  library(grid)
-
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-
-  numPlots = length(plots)
-
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                    ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-
- if (numPlots==1) {
-    print(plots[[1]])
-
-  } else {
-    # Set up the page
-    grid.newpage()
-    pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
-
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-
-      print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
-                                      layout.pos.col = matchidx$col))
-    }
-  }
-}
-
+```{r compare_pca, out.width="50%"}
 dune_pca <- rda(dune)
 dune_pca_no6 <- rda(dune[-6,])
-dune_plt1 <- ordi_plot(dune_pca, display="sites", geom="text", title="PCA with full dataset")
-dune_plt2 <- ordi_plot(dune_pca_no6, display="sites", geom="text", title="PCA with one sample omitted")
-multi_plot(dune_plt1, dune_plt2, cols=2)
+plot(dune_pca, display="sites", main="PCA with full dataset")
+plot(dune_pca_no6, display="sites", main="PCA with one sample omitted")
 ```
 
 You can see that the whole ordination has 'flipped' on its vertical axis. Depending
@@ -195,7 +147,7 @@ phosphorus (`P`), Aluminium (`Al`), soil pH (`pH`), and the amount of bare groun
 (`Baresoil`) as explanatories:
 
 ```{r varespec_cca, exercise=TRUE}
-varespec_cca <- ordi_cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
+varespec_cca <- cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
 summary(varespec_cca)[["cont"]][["importance"]]
 ```
 
@@ -216,21 +168,18 @@ a different point for each of your category levels
 * You can of course have a mixture of continuous and categorical variables
 
 ```{r varespec_triplot-setup}
-varespec_cca <- ordi_cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
+varespec_cca <- cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
 ```
 ```{r varespec_triplot, exercise=TRUE}
-ordi_plot(varespec_cca)
-```
-```{r varespec_triplot-solution}
-ordi_plot(varespec_cca, geom="text")
+plot(varespec_cca)
 ```
 
-Unless there are relatively few samples or attributes, the plot will not label
-the points unless you add the `geom="text"` option. Modify the script above to
-see the difference: with everything plotted this is probably too difficult to
-interpret. **Note** When you repeat this exercise using RStudio, the best graph
-is from using points (without the `geom="text"` option) and then using
-`ordi_identify()` to interactively label the points you are most interested in.
+Unless there are relatively few samples or attributes, the plot can look cluttered.
+Modify the script above to with `display=c("bp", "species")` or `display=c("bp","sites")`
+for separate species and sites plots. Even here, the species are cluttered as
+there are many ubiquitous species common to most plots. **Note** When you repeat
+this exercise using RStudio, you can use 
+`identify()` to interactively label the points you are most interested in.
 
 Nevertheless, even with this rather cluttered plot, you can immediately
 make inferences about the explanatory variables:
@@ -261,19 +210,19 @@ question("The following are negatively correlated with each other",
 
 To get a clearer picture of the samples and species, it is generally easier to
 plot them separately, along with the explanatory variables. Notice that in the
-commands below we set `ordi_plot()` to `layers=c("sites", "biplot")` or `layers=c("species", "biplot")` where `biplot` represents the "biplot" arrow
+commands below we set `plot()` to `display=c("sites", "biplot")` or `display=c("species", "bp")` where `bp` represents the "biplot" arrow
 points for continuous explanatory variables. If you have **categorical**
-explanatory variables replace these with `layers=c("sites", "centroids")` where
-the`centroids` represents centre for each level of your category. If you have a
+explanatory variables replace these with `display=c("sites", "cn")` where
+the`cn` represents centre for each level of your category. If you have a
 mixture of **both continuous and categorical** explanatories, use the format
-`layers=c("sites", "biplot", "centroids")`,
+`display=c("sites", "bp", "cn")`,
 
 ```{r cca_separate_plots-setup}
-varespec_cca <- ordi_cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
+varespec_cca <- cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
 ```
 ```{r cca_separate_plots, exercise=TRUE}
-ordi_plot(varespec_cca, geom="text", layers=c("sites", "biplot"))
-ordi_plot(varespec_cca, geom="text", layers=c("species", "biplot"))
+plot(varespec_cca, display=c("sites", "bp"))
+plot(varespec_cca, display=c("species", "bp"))
 ```
 
 These plots tell you key things about the samples and attributes in relation to
@@ -295,9 +244,9 @@ This is easy to do with a **partial constrained analysis**. Simply add the term
 `Condidition(Baresoil)` to your explanatory variables to remove its effect.
 
 ```{r partial_cca, exercise=TRUE}
-varespec_cca2 <- ordi_cca(varespec ~ K + P + Al + pH + Condition(Baresoil), data=varechem)
-ordi_plot(varespec_cca2, geom="text", layers=c("sites", "biplot"))
-ordi_plot(varespec_cca2, geom="text", layers=c("species", "biplot"))
+varespec_cca2 <- cca(varespec ~ K + P + Al + pH + Condition(Baresoil), data=varechem)
+plot(varespec_cca2, display=c("sites", "biplot"))
+plot(varespec_cca2, display=c("species", "biplot"))
 ```
 
 You can see that once we have "conditioned" for the effects of bare soil, the
@@ -353,7 +302,7 @@ obtain differ slightly; by default it does 999 randomisations of your data,
 although you can force it to do more.
 
 ```{r varespec_expl_anova-setup}
-varespec_cca <- ordi_cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
+varespec_cca <- cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
 ```
 ```{r varespec_expl_anova, exercise=TRUE}
 anova(varespec_cca, by="margin")
@@ -394,7 +343,7 @@ axes using the `by="axis"` option; again the exact p-values will differ slightly
 on each run.
 
 ```{r varespec_axis_anova-setup}
-varespec_cca <- ordi_cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
+varespec_cca <- cca(varespec ~ K + P + Al + pH + Baresoil, data=varechem)
 ```
 ```{r varespec_axis_anova, exercise=TRUE}
 anova(varespec_cca, by="axis")
@@ -414,34 +363,24 @@ the equivalent **linear** constrained technique, redundancy analysis (RDA). This
 is called via the `ordi_rda()` function from the `bio2020` library. 
 
 After running the code below, modify it to test the significance of the individual
-axes and variables, and extend the x-axis range on the species plot so that it
-is easier to read the `Management` variables.
-
-**Hints**:
-
-* Pipe your `ordi_plot` via the `%>%` symbol into `gf_lims()` to extend the x-axis
-* Use the `anova()` function with the `by=` option set correctly
+axes and variables
 
 ```{r dune_rda, exercise=TRUE}
 # Undertake the RDA with just two explanatory variables
-dune_rda <- ordi_rda(dune ~ A1 + Management, data=dune.env)
+dune_rda <- rda(dune ~ A1 + Management, data=dune.env)
 
 # Plot samples and Management (as point for each level) and A1 (biplot arrow)
-ordi_plot(dune_rda, geom="text", layers=c("sites", "centroids", "biplot"))
+plot(dune_rda, display=c("sites", "cn", "bp"))
 
 # Plot species and explanatories. Add "arrows=FALSE" to reduce clutter
-ordi_plot(dune_rda, geom="text", layers=c("species", "centroids", "biplot"))
+plot(dune_rda, display=c("species", "cn", "bp"))
 ```
 ```{r dune_rda-solution}
 # Undertake the RDA with just two explanatory variables
-dune_rda <- ordi_rda(dune ~ A1 + Management, data=dune.env)
+dune_rda <- rda(dune ~ A1 + Management, data=dune.env)
 
 # Plot samples and Management (as point for each level) and A1 (biplot arrow)
-ordi_plot(dune_rda, geom="text", layers=c("sites", "centroids", "biplot"))
-
-# gf_lims extends the x-axis
-ordi_plot(dune_rda, geom="text", layers=c("species", "centroids", "biplot")) %>% 
-  gf_lims(x=c(-2.5, 3)) 
+plot(dune_rda, display=c("sites", "cn", "bp"))
 
 # Anovas of axes and environmental variables
 anova(dune_rda, by="axis")
@@ -465,11 +404,11 @@ the equation formula
 ```{r dune_rda2-solution}
 # Include all the environmental variables; Note use of shortcut ~ . to enter
 # all the explanatories without needing to name them separately
-dune_rda2 <- ordi_rda(dune ~ ., data=dune.env)
+dune_rda2 <- rda(dune ~ ., data=dune.env)
 
 # Plots
-ordi_plot(dune_rda2, geom="text", layers=c("sites", "centroids", "biplot"))
-ordi_plot(dune_rda2, geom="text", layers=c("species", "centroids", "biplot"))
+plot(dune_rda2, display=c("sites", "cn", "bp"))
+plot(dune_rda2, display=c("species", "cn", "bp"))
 
 anova(dune_rda2, by="margin")
 ```
@@ -502,11 +441,24 @@ possible combinations of your explanatory variables.
 ```{r ordistep, exercise=TRUE}
 # Create full ordination with all the explanatory variables, using the ~ .
 # syntax to save you having to type the names of all 14 variables separately
-varespec_bigcca <- ordi_cca(varespec ~ . , data=varechem)
-varespec_mincca <- ordi_step(varespec_bigcca)
+varespec_bigcca <- cca(varespec ~ . , data=varechem)
+varespec_mincca <- ordistep(varespec_bigcca)
 
 # Check results
 anova(varespec_mincca, by="margin")
 ```
 
+There is a lot of output, as it goes through the analysis multiple times before
+finding the best solution. You can now identify properly only the most important
+variables that affect your species.
 
+## Summary
+Constrained ordination allows for a direct analysis of :
+
+* multiple response variables
+* multiple explanatory variables
+* relationships amongst response variables and explanatories
+* significance testing
+
+Whilst the examples shown on this website are based on plant species, the
+techniques can be readily applied to animal and laboratory studies.
