@@ -63,15 +63,24 @@ modified ordination plots, which can be very informative once you have learnt
 how to interpret them. You can also undertake formal statistical tests using
 analyses analogous to ANOVA. The technique will also cope with complex experimental
 designs, such as blocked designs, or time-series. You can also create interaction
-terms if needed. Constrained analysis exists in two main forms, linear and unimodal. The linear form is Redundancy Analysis (RDA) and unimodal is Canonical Correspondence Analysis (CCA). These are run using the `ordi_rda()` and `ordi_cca()` functions respectively.
+terms if needed. Constrained analysis exists in two main forms, linear and unimodal. The linear form is Redundancy Analysis (RDA) and unimodal is Canonical Correspondence Analysis (CCA). These are run using the `rda()` and `cca()` functions respectively. When these functions are called without explanatory variables (Practical 5) they do PCA and CA. When you include explanatory variables they do the closely related RDA and CCA constrained versions of the analyses. There is no constrained equivalent of NMDS.
 
+
+# Learning outcomes
 The overall aim of this practical is to introduce you to the analysis, interpretation and display of multi-variable data with explanatory variables through constrained ordination. Specific objectives are to:
 
 1. Use unimodal methods to analyse, visualise and interpret the ordination plots
 2. Demonstrate "permutation ANOVA" of the whole analysis, different explanatory variables, and individual ordination axes
 3. Use stepwise selection to identify the minimum number of explanatory variables.
 
-The approach for the analysis and interpretation of linear methods is very similar.
+The approach for the analysis and interpretation of linear methods is very similar. At the end of this practical you should have a good understanding of how to handle and interpret multi-variable data from laboratory and field experients in Biology and Zoology.
+
+# Before you begin
+You should be used to this by now:
+
+1. Start RStudio in the usual way. Open your `NES2303` project from the main menu by clicking on **File -> Open project...** and navigate to your NES2303 project file and open it. Check that the word "None" has been replaced by "NES2303" in the project listing at the top right of the RStudio window.
+2. From the main menu click "File -> New file -> R Script"
+3. Save your script, e.g. call it `practical6.R`
 
 # 1. Unimodal analysis and visualisation
 ## 1.1 Study dataset
@@ -175,7 +184,14 @@ point in **opposite** directions
 * Two explanatory variables that are **uncorrelated** with each other will have 
 arrows at roughly 90 degrees to each other.
 
-You can see that Aluminium (`Al`), Phosphorus (`P`) and bare soil (`Baresoil`) are the most important variables, as these have the longest arrows. Al and pH are positively correlated with other (arrows point in same direction), and K and P are positively correlated (roughly) as arrows point in the same direction. pH and Baresoil are negatively correlated (arrows point in opposite directions). pH and P are uncorrelated with each other (arrows roughly 90-degrees).
+### 1.2.1 Interpret the plots - Environmental variables (any graph)
+In both your samples+environment and species+environment plots you can see that Aluminium (`Al`), Phosphorus (`P`) and bare soil (`Baresoil`) are the most important variables, as these have the longest arrows. Al and pH are positively correlated with other (arrows point in same direction), and K and P are positively correlated (roughly) as arrows point in the same direction. pH and Baresoil are negatively correlated (arrows point in opposite directions). pH and P are uncorrelated with each other (arrows roughly 90-degrees).
+
+### 1.2.2 Interpret the plots - Samples (Sites and environment graph)
+You can see that samples 9, 10, 2, 3 and 4 all have high pH and high Aluminium, as they are near the arrow tips. Samples 21, 22, 16 and 14 have lots of bare soil. Samples 24, 25, 27 and 28 have relatively high P. Note also that samples 5, 6, 7, 13 and 18 have relatively low P, as they are on the **opposite** site of the graph to the P arrow-head. As usual, samples close to each other have similar species composition, samples far apart are dissimilar. If you were analysing data from a molecular biology laboratory experiment with gene up- or down-regulation, then isolates (samples) close to each other would have similar genes up- or down-regulated. You could relate your isolates to any experimental treatments, which would be the equivalent of your environment variables.
+
+### 1.2.3 Interpret the plots - Species (Species and environment graph)
+Species Flavniva, Cladcerv, Cladstel at the bottom right of the plot are associated with high pH and high Aluminium, Species Polycomm, Rhodtome, Cladbotr like bare soil. Hylosple and Discrsp like high K and P, whereas Callvulg, Icmaeric and Vacculig like low K and P. Species close to each other in the plot tend to co-occur. Those far apart are rarely found growing together. Likewise, if you were doing a molecular biology experiment, and your data were isolates and gene regulations, then genes close to each other would be up- or down-regulated in similar ways etc.
 
 ## 1.3 Simplifying the plot to view samples or species
 There is still a lot of information in the plots so you can simplify them to only
@@ -195,16 +211,10 @@ identify(varespec_cca_spp_plt, "species") # Hit Esc to exit
 # Call the identify function again if you want to label more species
 ```
 
-From these plots we can start to interpret the relationships between our explanatory variables and individual samples or species:
-
-* There is a relatively large amount of bare soil at samples 22, 16, 14, and relatively little bare soil at sites 2, 3, 4, 9, 10, 12
-* Samples 24, 25, 27, 28 are relatively high in P and K, whilst samples 5, 6, 7 13 and 18 have low P and K
-* Al and pH are probably highest in samples 3 and 4
-* Species associated with more bare soil include Betupube, Barbhatc, Ptilcili
-* Species associated with low K and P include Callvulg, Icmaeric and Vacculig
+If your plots are too cluttered, this is an easy way of simplifying the plots to make them easier to interpret.
 
 ## 1.4 Bare soil is not soil chemistry
-The longest arrow (and hence most important explanatory variable) is bare soil. However, this is not of course soil chemistry, and so you might be interested in looking at what is going on after taking into account the effects of bare soil. This is easy to do with a **partial constrained analysis**. Simply add the term `Condition(Baresoil)` to your explanatory variables to remove its effect.
+The longest arrow (and hence most important explanatory variable) is bare soil which might be affected by other factors e.g. animal grazing / trampling etc. but less affected by soil chemistry. If your main aim is to understand the effects of soil chemistry, and you not interested in bare soil, you need to be able to **remove the effects of bare soil** so that you can focus on the soil chemistry. You cannot simply omit bare soil from the analysis, as you know it's important. Instead you do a **partial** analysis, which answers the question "What is the effect of soil chemistry **after** taking into account any impact of bare soil?" This is easy to do with a **partial constrained analysis**. Simply add the term `Condition(Baresoil)` to your explanatory variables to remove its effect.
 
 ```{r, eval=FALSE}
 # Partial CCA, storing the results in a new R object
